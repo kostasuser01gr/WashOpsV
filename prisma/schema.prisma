@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @relation(fields: [roleId], references: [id])
+  roleId    String
+  sessions  Session[]
+  washLogs  WashLog[]
+  shifts    Shift[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Role {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  users User[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+
+model Vehicle {
+  id           String    @id @default(cuid())
+  plate        String    @unique
+  make         String?
+  model        String?
+  year         Int?
+  washLogs     WashLog[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model WashLog {
+  id           String       @id @default(cuid())
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId    String
+  washer       User         @relation(fields: [washerId], references: [id])
+  washerId     String
+  washDate     DateTime
+  station      Station?     @relation(fields: [stationId], references: [id])
+  stationId    String?
+  photos       WashPhoto[]
+  discrepancies Discrepancy[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  @@unique([vehicleId, washDate])
+  @@index([vehicleId, washDate])
+}
+
+model WashPhoto {
+  id        String  @id @default(cuid())
+  wash      WashLog @relation(fields: [washId], references: [id], onDelete: Cascade)
+  washId    String
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model Discrepancy {
+  id        String   @id @default(cuid())
+  wash      WashLog  @relation(fields: [washId], references: [id], onDelete: Cascade)
+  washId    String
+  note      String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  @@index([entity, entityId])
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  station   Station  @relation(fields: [stationId], references: [id])
+  stationId String
+  startTime DateTime
+  endTime   DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Station {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  address   String?
+  createdAt DateTime @default(now())
+  washLogs  WashLog[]
+  shifts    Shift[]
+}
+
+model IdempotencyKey {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  method       String
+  path         String
+  requestHash  String
+  responseBody Json?
+  status       Int?
+  createdAt    DateTime @default(now())
+}
+
+model RateLimitCounter {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  count     Int      @default(0)
+  resetAt   DateTime
+  createdAt DateTime @default(now())
+}
